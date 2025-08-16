@@ -3,14 +3,14 @@ from django import forms
 from django.contrib.auth.models import User
 
 
-class PostForm(forms.ModelForm):    
+class PostForm(forms.ModelForm):
 
     class Meta:
         # Указываем модель, на основе которой должна строиться форма.
         model = Post
-        exclude = ('author', )        
+        exclude = ('author', )
         widgets = {
-            'pub_date': forms.DateInput(attrs={'type': 'date'})            
+            'pub_date': forms.DateInput(attrs={'type': 'date'})
         }
 
 

@@ -1,6 +1,4 @@
 from django.urls import path
-from django.conf import settings
-from django.conf.urls.static import static
 
 from blog import views
 
@@ -14,8 +12,9 @@ urlpatterns = [
     path('category/<slug:category_slug>/',
          views.category_posts, name='category_posts'),
     path('profile/<str:username>/', views.profile, name='profile'),
-    path('edit_profile/', views.edit_profile, name='edit_profile'),    
-    path('posts/<int:post_id>/comment/', views.add_comment, name='add_comment'),
+    path('edit_profile/', views.edit_profile, name='edit_profile'),
+    path('posts/<int:post_id>/comment/', views.add_comment,
+         name='add_comment'),
     path(
         'posts/<int:post_id>/edit_comment/<int:comment_id>/',
         views.edit_comment, name='edit_comment'),

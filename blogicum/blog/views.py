@@ -31,7 +31,7 @@ def get_visible_posts():
     objects = Post.objects.select_related(
         'category', 'location'
     ).annotate(comment_count=Count('comments')
-               ).order_by('-pub_date').filter(is_published=True, 
+               ).order_by('-pub_date').filter(is_published=True,
                                               pub_date__lte=now,
                                               category__is_published=True)
     return objects
@@ -59,8 +59,8 @@ def visible_to_user(user, author):
 
 class IndexListView(ListView):
     model = Post
-    template_name = 'blog/index.html'    
-    paginate_by = 10    
+    template_name = 'blog/index.html'
+    paginate_by = 10
     objects = get_visible_posts()
 
     def get_queryset(self):
@@ -128,7 +128,7 @@ def profile(request, username):
         'profile': profile_user,
         'page_obj': page_obj
     }
-    return render(request, template, context) 
+    return render(request, template, context)
 
 
 class PostCreateView(LoginRequiredMixin, CreateView):
