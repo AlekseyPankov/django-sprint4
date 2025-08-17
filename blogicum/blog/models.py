@@ -1,5 +1,4 @@
 from django.db import models
-
 from django.contrib.auth import get_user_model
 
 
@@ -67,6 +66,7 @@ class Post(BaseModel):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
+        related_name='posts',
         verbose_name='Автор публикации'
     )
     location = models.ForeignKey(
@@ -89,6 +89,9 @@ class Post(BaseModel):
     class Meta:
         verbose_name = 'публикация'
         verbose_name_plural = 'Публикации'
+        # Не добавляю сюда сортировку, так как при применении annotate во
+        # вьюшке сортировка ломается. Соответственно , сортировку применил
+        # во вьюшке
 
     def __str__(self):
         return self.title
@@ -106,3 +109,6 @@ class Comments(models.Model):
 
     class Meta:
         ordering = ('created_at',)
+
+    def __str__(self):
+        return self.text

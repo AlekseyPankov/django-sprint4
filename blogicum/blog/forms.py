@@ -1,12 +1,12 @@
-from .models import Comments, Post
 from django import forms
 from django.contrib.auth.models import User
+
+from .models import Comments, Post
 
 
 class PostForm(forms.ModelForm):
 
-    class Meta:
-        # Указываем модель, на основе которой должна строиться форма.
+    class Meta:        
         model = Post
         exclude = ('author', )
         widgets = {

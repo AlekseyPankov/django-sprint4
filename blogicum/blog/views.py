@@ -7,10 +7,12 @@ from django.views.generic import (
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.urls import reverse_lazy
 from django.db.models import Q, Count
 from django.contrib.auth.decorators import login_required
-
+from django.urls import reverse_lazy, reverse
+# Если убрать reverse_lazy, то у меня ломается PostDeleteView.
+# Pytest тоже не проходит.
+# Происходит циклический импорт и на момент импорта, urls.py ещё не загружены.
 
 from blog.models import Post, Category, Comments
 from .forms import CommentsForm, PostForm, ProfileEditForm
@@ -27,14 +29,14 @@ class OnlyAuthorMixin(UserPassesTestMixin):
 
 
 def get_visible_posts():
-    now = datetime.datetime.now()
-    objects = Post.objects.select_related(
+    return Post.objects.select_related(
         'category', 'location'
     ).annotate(comment_count=Count('comments')
-               ).order_by('-pub_date').filter(is_published=True,
-                                              pub_date__lte=now,
-                                              category__is_published=True)
-    return objects
+               ).order_by(
+                   '-pub_date').filter(
+                       is_published=True,
+                       pub_date__lte=datetime.datetime.now(),
+                       category__is_published=True)
 
 
 def visible_to_user(user, author):
@@ -51,10 +53,15 @@ def visible_to_user(user, author):
               category__is_published=True
               ) | Q(author=user)
         )
-    else:
-        return objects.filter(is_published=True, pub_date__lte=now,
-                              category__is_published=True
-                              )
+    return objects.filter(is_published=True, pub_date__lte=now,
+                          category__is_published=True
+                          )
+
+
+def make_paginate(request, post):
+    paginator = Paginator(post, 10)
+    page_number = request.GET.get('page')
+    return paginator.get_page(page_number)
 
 
 class IndexListView(ListView):
@@ -100,9 +107,7 @@ def category_posts(request, category_slug):
     post = get_visible_posts().filter(
         category__slug=category_slug,
     )
-    paginator = Paginator(post, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    page_obj = make_paginate(request, post)
     context = {
         'category': category,
         'page_obj': page_obj
@@ -114,16 +119,13 @@ def profile(request, username):
     template = 'blog/profile.html'
     profile_user = get_object_or_404(User, username=username)
     if request.user == profile_user or request.user.is_superuser:
-        post_list = Post.objects.filter(
-            author=profile_user).annotate(
-                comment_count=Count('comments')).order_by('-pub_date')
+        post_list = profile_user.posts.annotate(
+            comment_count=Count('comments')).order_by('-pub_date')
     else:
         post_list = visible_to_user(
             request.user, get_object_or_404(User, username=username)).filter(
                 author=profile_user)
-    paginator = Paginator(post_list, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    page_obj = make_paginate(request, post_list)
     context = {
         'profile': profile_user,
         'page_obj': page_obj
@@ -137,7 +139,7 @@ class PostCreateView(LoginRequiredMixin, CreateView):
     template_name = 'blog/create.html'
 
     def get_success_url(self):
-        return reverse_lazy(
+        return reverse(
             'blog:profile',
             kwargs={'username': self.request.user.username}
         )
@@ -217,7 +219,7 @@ class PostUpdateView(OnlyAuthorMixin, UpdateView):
     template_name = 'blog/create.html'
 
     def get_success_url(self):
-        return reverse_lazy(
+        return reverse(
             'blog:post_detail',
             kwargs={'pk': self.object.pk}
         )
