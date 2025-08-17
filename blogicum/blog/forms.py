@@ -6,7 +6,7 @@ from .models import Comments, Post
 
 class PostForm(forms.ModelForm):
 
-    class Meta:        
+    class Meta:
         model = Post
         exclude = ('author', )
         widgets = {
