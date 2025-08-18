@@ -6,7 +6,7 @@ from django.views.generic import (
 )
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Count
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse_lazy, reverse
@@ -16,50 +16,38 @@ from django.urls import reverse_lazy, reverse
 
 from blog.models import Post, Category, Comments
 from .forms import CommentsForm, PostForm, ProfileEditForm
+from .mixins import OnlyAuthorMixin
+
+MAX_POSTS_ON_PAGE = 10
 
 
-class OnlyAuthorMixin(UserPassesTestMixin):
-
-    def test_func(self):
-        object = self.get_object()
-        return object.author == self.request.user
-
-    def handle_no_permission(self):
-        return redirect('blog:post_detail', pk=self.get_object().pk)
+def base_posts():
+    return Post.objects.select_related(
+        'category', 'location'
+    ).annotate(comment_count=Count('comments')).order_by('-pub_date')
 
 
 def get_visible_posts():
-    return Post.objects.select_related(
-        'category', 'location'
-    ).annotate(comment_count=Count('comments')
-               ).order_by(
-                   '-pub_date').filter(
-                       is_published=True,
-                       pub_date__lte=datetime.datetime.now(),
-                       category__is_published=True)
+    return base_posts().filter(
+        is_published=True,
+        pub_date__lte=datetime.datetime.now(),
+        category__is_published=True)
 
 
 def visible_to_user(user, author):
-    now = datetime.datetime.now()
-    objects = Post.objects.select_related(
-        'category', 'location'
-    ).annotate(comment_count=Count('comments')
-               ).order_by('-pub_date')
+    # Не совсем понял как нужно было сделать через get_visible_posts()
+    # поэтому сделал немного подругому.
     if user == author:
-        return objects
+        return base_posts()
     elif user.is_authenticated:
-        return objects.filter(
-            Q(is_published=True, pub_date__lte=now,
-              category__is_published=True
-              ) | Q(author=user)
-        )
-    return objects.filter(is_published=True, pub_date__lte=now,
-                          category__is_published=True
-                          )
+        return base_posts().filter(
+            Q(is_published=True, pub_date__lte=datetime.datetime.now(),
+              category__is_published=True) | Q(author=user))
+    return get_visible_posts()
 
 
 def make_paginate(request, post):
-    paginator = Paginator(post, 10)
+    paginator = Paginator(post, MAX_POSTS_ON_PAGE)
     page_number = request.GET.get('page')
     return paginator.get_page(page_number)
 
@@ -67,7 +55,7 @@ def make_paginate(request, post):
 class IndexListView(ListView):
     model = Post
     template_name = 'blog/index.html'
-    paginate_by = 10
+    paginate_by = MAX_POSTS_ON_PAGE
     objects = get_visible_posts()
 
     def get_queryset(self):
